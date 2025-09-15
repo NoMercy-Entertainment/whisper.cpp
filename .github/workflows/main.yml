@@ -1,12 +1,12 @@
-name: Download & Convert Whisper GGML Models
+name: Build Whisper GGML Models
 
 on:
   workflow_dispatch: # handmatig starten
   schedule:
-    - cron: "0 3 * * 0" # wekelijks, elke zondag om 03:00 UTC
+    - cron: "0 3 * * 0" # wekelijks, elke zondag 03:00 UTC
 
 jobs:
-  whisper-models:
+  build-whisper:
     runs-on: ubuntu-latest
 
     steps:
@@ -16,25 +16,36 @@ jobs:
           repository: ggerganov/whisper.cpp
           path: whisper.cpp
 
-      - name: Download latest OpenAI models
-        working-directory: whisper.cpp
+      - name: Install dependencies
         run: |
-          ./models/download-ggml-model.sh base
-          ./models/download-ggml-model.sh small
-          ./models/download-ggml-model.sh medium
-          ./models/download-ggml-model.sh large-v3
+          sudo apt-get update
+          sudo apt-get install -y git wget python3 python3-pip build-essential
+          pip3 install torch --index-url https://download.pytorch.org/whl/cpu
 
-      - name: Convert models to .bin
-        working-directory: whisper.cpp
+      - name: Download HuggingFace models
         run: |
-          files=("./models/ggml-base.bin" "./models/ggml-small.bin" "./models/ggml-medium.bin" "./models/ggml-large-v3.bin")
-          for file in "${files[@]}"; do
-            echo "Converting $file"
-            python3 ./models/convert-pt-to-ggml.py "$file"
+          mkdir -p models-src
+          for model in base small medium large-v3; do
+            echo "Downloading $model..."
+            mkdir -p models-src/$model
+            wget -q https://huggingface.co/openai/whisper-$model/resolve/main/pytorch_model.bin -O models-src/$model/pytorch_model.bin
+            wget -q https://huggingface.co/openai/whisper-$model/resolve/main/config.json -O models-src/$model/config.json
+            wget -q https://huggingface.co/openai/whisper-$model/resolve/main/vocab.json -O models-src/$model/vocab.json
+            wget -q https://huggingface.co/openai/whisper-$model/resolve/main/merges.txt -O models-src/$model/merges.txt
           done
 
-      - name: Upload converted models
+      - name: Convert models to GGML
+        working-directory: whisper.cpp
+        run: |
+          for model in base small medium large-v3; do
+            echo "Converting $model..."
+            python3 ./models/convert-hf-to-ggml.py \
+              ../models-src/$model \
+              --outfile ./models/ggml-$model.bin
+          done
+
+      - name: Upload GGML models
         uses: actions/upload-artifact@v4
         with:
-          name: whisper-ggml-bin
-          path: whisper.cpp/models/*.bin
+          name: whisper-ggml-models
+          path: whisper.cpp/models/ggml-*.bin
