@@ -14,7 +14,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: ggerganov/whisper.cpp
-          path: whisper.cpp
 
       - name: Install dependencies
         run: |
