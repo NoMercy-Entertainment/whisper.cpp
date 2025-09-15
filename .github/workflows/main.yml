@@ -18,8 +18,8 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y git wget python3 python3-pip
-          pip3 install torch --index-url https://download.pytorch.org/whl/cpu
+          sudo apt-get install -y git wget python3 python3-pip build-essential
+          pip3 install numpy tqdm torch --index-url https://download.pytorch.org/whl/cpu
 
       - name: Download HuggingFace models
         run: |
@@ -47,4 +47,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: whisper-ggml-models
-          path: whisper.cpp/models/ggml-*.bin
+          path: models/ggml-*.bin
