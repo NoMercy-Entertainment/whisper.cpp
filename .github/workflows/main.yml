@@ -18,7 +18,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y git wget python3 python3-pip build-essential
+          sudo apt-get install -y git wget python3 python3-pip
           pip3 install torch --index-url https://download.pytorch.org/whl/cpu
 
       - name: Download HuggingFace models
@@ -37,7 +37,7 @@ jobs:
         run: |
           for model in base small medium large-v3; do
             echo "Converting $model..."
-            python3 whisper.cpp/models/convert-hf-to-ggml.py \
+            python3 whisper.cpp/models/convert-pt-to-ggml.py \
               models-src/$model \
               --outfile whisper.cpp/models/ggml-$model.bin
           done
