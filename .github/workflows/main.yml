@@ -16,16 +16,6 @@ jobs:
           repository: ggerganov/whisper.cpp
           path: whisper.cpp
 
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y wget python3 python3-pip git build-essential
-
-      - name: Build whisper.cpp
-        working-directory: whisper.cpp
-        run: |
-          make
-
       - name: Download latest OpenAI models
         working-directory: whisper.cpp
         run: |
@@ -37,9 +27,10 @@ jobs:
       - name: Convert models to .bin
         working-directory: whisper.cpp
         run: |
-          for f in ./models/ggml-*.bin; do
-            echo "Converting $f"
-            python3 ./models/convert-pt-to-ggml.py "$f"
+          files=("./models/ggml-base.bin" "./models/ggml-small.bin" "./models/ggml-medium.bin" "./models/ggml-large-v3.bin")
+          for file in "${files[@]}"; do
+            echo "Converting $file"
+            python3 ./models/convert-pt-to-ggml.py "$file"
           done
 
       - name: Upload converted models
