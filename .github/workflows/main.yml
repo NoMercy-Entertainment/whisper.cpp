@@ -27,10 +27,7 @@ jobs:
           for model in base small medium large-v3; do
             echo "Downloading $model..."
             mkdir -p models-src/$model
-            wget -q https://huggingface.co/openai/whisper-$model/resolve/main/pytorch_model.bin -O models-src/$model/pytorch_model.bin
-            wget -q https://huggingface.co/openai/whisper-$model/resolve/main/config.json -O models-src/$model/config.json
-            wget -q https://huggingface.co/openai/whisper-$model/resolve/main/vocab.json -O models-src/$model/vocab.json
-            wget -q https://huggingface.co/openai/whisper-$model/resolve/main/merges.txt -O models-src/$model/merges.txt
+            git clone --depth 1 https://huggingface.co/openai/whisper-$model models-src/$model
           done
 
       - name: Convert models to GGML
