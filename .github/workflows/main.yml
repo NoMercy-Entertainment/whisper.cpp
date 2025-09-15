@@ -34,14 +34,14 @@ jobs:
           done
 
       - name: Convert models to GGML
-        working-directory: whisper.cpp
         run: |
           for model in base small medium large-v3; do
             echo "Converting $model..."
-            python3 ./models/convert-hf-to-ggml.py \
-              ../models-src/$model \
-              --outfile ./models/ggml-$model.bin
+            python3 whisper.cpp/models/convert-hf-to-ggml.py \
+              models-src/$model \
+              --outfile whisper.cpp/models/ggml-$model.bin
           done
+
 
       - name: Upload GGML models
         uses: actions/upload-artifact@v4
