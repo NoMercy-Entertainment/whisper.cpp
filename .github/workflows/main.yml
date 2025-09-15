@@ -1,0 +1,49 @@
+name: Download & Convert Whisper GGML Models
+
+on:
+  workflow_dispatch: # handmatig starten
+  schedule:
+    - cron: "0 3 * * 0" # wekelijks, elke zondag om 03:00 UTC
+
+jobs:
+  whisper-models:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout whisper.cpp
+        uses: actions/checkout@v4
+        with:
+          repository: ggerganov/whisper.cpp
+          path: whisper.cpp
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget python3 python3-pip git build-essential
+
+      - name: Build whisper.cpp
+        working-directory: whisper.cpp
+        run: |
+          make
+
+      - name: Download latest OpenAI models
+        working-directory: whisper.cpp
+        run: |
+          ./models/download-ggml-model.sh base
+          ./models/download-ggml-model.sh small
+          ./models/download-ggml-model.sh medium
+          ./models/download-ggml-model.sh large-v3
+
+      - name: Convert models to .bin
+        working-directory: whisper.cpp
+        run: |
+          for f in ./models/ggml-*.bin; do
+            echo "Converting $f"
+            python3 ./models/convert-pt-to-ggml.py "$f"
+          done
+
+      - name: Upload converted models
+        uses: actions/upload-artifact@v4
+        with:
+          name: whisper-ggml-bin
+          path: whisper.cpp/models/*.bin
