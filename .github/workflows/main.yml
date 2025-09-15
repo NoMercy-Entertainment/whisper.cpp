@@ -37,9 +37,9 @@ jobs:
         run: |
           for model in base small medium large-v3; do
             echo "Converting $model..."
-            python3 whisper.cpp/models/convert-pt-to-ggml.py \
+            python3 ./models/convert-pt-to-ggml.py \
               models-src/$model \
-              --outfile whisper.cpp/models/ggml-$model.bin
+              --outfile ./models/ggml-$model.bin
           done
 
 
