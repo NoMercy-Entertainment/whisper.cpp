@@ -10,6 +10,17 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
+          
       - name: Checkout whisper.cpp
         uses: actions/checkout@v4
         with:
@@ -19,7 +30,7 @@ jobs:
       - name: Install dependencies
         run: |
           git config --global --add safe.directory ${{ github.workspace }}
-          apt-get update && apt-get install -y git wget python3 python3-pip build-essential
+          sudo apt-get update && sudo apt-get install -y git wget python3 python3-pip build-essential
           pip3 install numpy tqdm torch --index-url https://download.pytorch.org/whl/cpu
           mkdir -p ${{ github.workspace }}/models-src
           mkdir -p ${{ github.workspace }}/output/models
