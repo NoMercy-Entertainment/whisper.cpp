@@ -4,108 +4,53 @@ on:
   push:
     branches:
       - master
-  workflow_dispatch: # manual trigger from Actions tab
+  workflow_dispatch:
   schedule:
-    - cron: "0 3 * * 0" # weekly, every sunday 03:00 UTC
+    - cron: "0 3 * * 0"
 
 jobs:
-  build-base:
-    uses: ./.github/workflows/build-model.yml
-    with:
-      model_name: "base"
-      model_repo: "openai/whisper-base"
-
-  build-small:
-    uses: ./.github/workflows/build-model.yml
-    with:
-      model_name: "small"
-      model_repo: "openai/whisper-small"
-
-  build-medium:
-    uses: ./.github/workflows/build-model.yml
-    with:
-      model_name: "medium"
-      model_repo: "openai/whisper-medium"
-
-  build-large-v3:
-    uses: ./.github/workflows/build-model.yml
-    with:
-      model_name: "large-v3"
-      model_repo: "openai/whisper-large-v3"
-
-  combine-artifacts:
-    needs: [build-base, build-small, build-medium, build-large-v3]
+  create-release:
     runs-on: ubuntu-latest
     outputs:
-      release-tag: ${{ steps.create-tag.outputs.tag }}
+      tag: ${{ steps.create-tag.outputs.tag }}
+      upload_url: ${{ steps.create-release.outputs.upload_url }}
       whispercpp-version: ${{ steps.get-whispercpp-version.outputs.version }}
     steps:
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
+      - name: Checkout whisper.cpp
+        uses: actions/checkout@v4
         with:
-          pattern: whisper-ggml-model-*
-          merge-multiple: true
-          path: combined-models/
+          repository: ggml-org/whisper.cpp
+          ref: v1.7.6
 
       - name: Extract whisper.cpp version
         id: get-whispercpp-version
         run: |
-          # Try to extract version from a VERSION file or git tag in the whisper.cpp directory
-          # Adjust the path below if whisper.cpp is in a different location or needs to be cloned
-          if [ -f "combined-models/whisper.cpp/VERSION" ]; then
-            VERSION=$(cat combined-models/whisper.cpp/VERSION)
-          elif [ -d "combined-models/whisper.cpp/.git" ]; then
-            VERSION=$(git -C combined-models/whisper.cpp describe --tags --abbrev=0)
+          if [ -f VERSION ]; then
+            VERSION=$(cat VERSION)
+          elif [ -d .git ]; then
+            VERSION=$(git describe --tags --abbrev=0)
           else
             VERSION="unknown"
           fi
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
-          echo "Detected whisper.cpp version: $VERSION"
 
       - name: Create version tag
         id: create-tag
         run: |
-          # Create date-based version (YYYY.MM.DD format)
           VERSION=$(date +'%Y.%m.%d')
-          
-          # If multiple builds happen on the same day, add a build number
-          BUILD_NUMBER=1
-          ORIGINAL_VERSION=$VERSION
-          
-          # Check if we need to add build number (this is a simple approach)
-          # In a real scenario, you might want to check existing releases via API
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            # For manual builds, add timestamp to make it unique
             VERSION="${VERSION}.$(date +'%H%M')"
           fi
-          
           echo "tag=v${VERSION}" >> $GITHUB_OUTPUT
-          echo "version=${VERSION}" >> $GITHUB_OUTPUT
-          echo "Generated version: v${VERSION}"
 
-      - name: Upload combined artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: whisper-ggml-models
-          path: combined-models/
-
-  create-release:
-    needs: combine-artifacts
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download combined artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: whisper-ggml-models
-          path: release-assets/
-
-      - name: Create Release
+      - name: Create draft release
+        id: create-release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ needs.combine-artifacts.outputs.release-tag }}
-          name: "Whisper GGML Models ${{ needs.combine-artifacts.outputs.release-tag }}"
+          tag_name: ${{ steps.create-tag.outputs.tag }}
+          name: "Whisper GGML Models ${{ steps.create-tag.outputs.tag }}"
           body: |
-            # Whisper GGML Models Release ${{ needs.combine-artifacts.outputs.release-tag }}
+            # Whisper GGML Models Release ${{ steps.create-tag.outputs.tag }}
             
             This release contains GGML-converted Whisper models for use with whisper.cpp and compatible applications.
             
@@ -113,7 +58,7 @@ jobs:
             - **ggml-base.bin** - Base model (~150MB)
             - **ggml-small.bin** - Small model (~500MB) 
             - **ggml-medium.bin** - Medium model (~1.5GB)
-            - **ggml-large-v3.bin** - Large v3 model (~3GB)
+            - **ggml-large-v3.bin** - Large v3 model (~3GB, split into parts due to GitHub size limits)
             
             ## Usage
             These models can be used directly with:
@@ -121,14 +66,75 @@ jobs:
             - [whisper-desktop](https://github.com/Const-me/Whisper)
             - Any application supporting GGML Whisper models
             
+            ## How to Reassemble the Large Model
+            After downloading all parts (e.g., `ggml-large-v3.bin.part-aa`, `ggml-large-v3.bin.part-ab`, ...), run the following command in the folder with the parts:
+            
+            **Linux / macOS (Terminal):**
+            ```sh
+            cat ggml-large-v3.bin.part-* > ggml-large-v3.bin
+            ```
+            
+            **Windows (Command Prompt):**
+            ```cmd
+            copy /b ggml-large-v3.bin.part-aa+ggml-large-v3.bin.part-ab+ggml-large-v3.bin.part-ac ggml-large-v3.bin
+            ```
+            *(Add all part filenames in order, separated by `+`.)*
+            
+            **Windows (PowerShell):**
+            ```powershell
+            Get-Content .\ggml-large-v3.bin.part-* -Raw | Set-Content .\ggml-large-v3.bin -AsByteStream
+            ```
+            
             ## Build Information
-            - Built from: whisper.cpp ${{ needs.combine-artifacts.outputs.whispercpp-version }}
+            - Built from: whisper.cpp ${{ steps.get-whispercpp-version.outputs.version }}
             - Source models: OpenAI Whisper (HuggingFace)
-            - Build date: ${{ needs.combine-artifacts.outputs.release-tag }}
+            - Build date: ${{ steps.create-tag.outputs.tag }}
             
             Generated automatically by GitHub Actions.
-          files: release-assets/*
+          draft: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-base:
+    needs: create-release
+    uses: ./.github/workflows/build-model.yml
+    with:
+      model_name: "base"
+      model_repo: "openai/whisper-base"
+      release_upload_url: ${{ needs.create-release.outputs.upload_url }}
+
+  build-small:
+    needs: create-release
+    uses: ./.github/workflows/build-model.yml
+    with:
+      model_name: "small"
+      model_repo: "openai/whisper-small"
+      release_upload_url: ${{ needs.create-release.outputs.upload_url }}
+
+  build-medium:
+    needs: create-release
+    uses: ./.github/workflows/build-model.yml
+    with:
+      model_name: "medium"
+      model_repo: "openai/whisper-medium"
+      release_upload_url: ${{ needs.create-release.outputs.upload_url }}
+
+  build-large-v3:
+    needs: create-release
+    uses: ./.github/workflows/build-model.yml
+    with:
+      model_name: "large-v3"
+      model_repo: "openai/whisper-large-v3"
+      release_upload_url: ${{ needs.create-release.outputs.upload_url }}
+
+  publish-release:
+    needs: [create-release, build-base, build-small, build-medium, build-large-v3]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ needs.create-release.outputs.tag }}
           draft: false
-          prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

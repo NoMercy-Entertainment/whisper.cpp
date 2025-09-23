@@ -57,9 +57,6 @@ jobs:
 
       - name: Download HuggingFace model ${{ inputs.model_name }}
         run: |
-          echo "Available disk space before download:"
-          df -h
-          
           # For large models, use sparse checkout to avoid downloading unnecessary files
           MODEL_DIR="${{ github.workspace }}/models-src/${{ inputs.model_name }}"
           
@@ -75,21 +72,12 @@ jobs:
               echo "/*" > .git/info/sparse-checkout
               echo "!flax_model.msgpack" >> .git/info/sparse-checkout
               echo "!tf_model.h5" >> .git/info/sparse-checkout
-              
-              # Try to checkout
               if git checkout; then
-                echo "Successfully downloaded ${{ inputs.model_name }} model with sparse checkout"
-                echo "Files in model directory:"
-                ls -la "$MODEL_DIR"
                 break
               else
-                echo "Checkout failed, trying full clone for attempt $i..."
                 cd ${{ github.workspace }}
                 rm -rf "$MODEL_DIR"
                 if git clone --depth 1 https://huggingface.co/${{ inputs.model_repo }} "$MODEL_DIR"; then
-                  echo "Successfully downloaded ${{ inputs.model_name }} model with full clone"
-                  echo "Files in model directory:"
-                  ls -la "$MODEL_DIR"
                   break
                 fi
               fi
@@ -103,23 +91,16 @@ jobs:
 
       - name: Convert model to GGML ${{ inputs.model_name }}
         run: |
-          echo "Converting ${{ inputs.model_name }}..."
-          echo "Disk space before conversion:"
-          df -h
-          # Use the HuggingFace H5 converter for HuggingFace models
           python3 ${{ github.workspace }}/models/convert-h5-to-ggml.py \
             ${{ github.workspace }}/models-src/${{ inputs.model_name }} \
             ${{ github.workspace }} \
             ${{ github.workspace }}/output/models/
-          # Rename the output file to match expected naming convention
           if [ -f "${{ github.workspace }}/output/models/ggml-model.bin" ]; then
             mv "${{ github.workspace }}/output/models/ggml-model.bin" \
                "${{ github.workspace }}/output/models/ggml-${{ inputs.model_name }}.bin"
           fi
           echo "Cleaning up ${{ inputs.model_name }} source files..."
           rm -rf ${{ github.workspace }}/models-src/${{ inputs.model_name }}
-          echo "Final disk space:"
-          df -h
 
       - name: Upload GGML model ${{ inputs.model_name }}
         uses: actions/upload-artifact@v4
