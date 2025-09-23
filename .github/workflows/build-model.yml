@@ -12,11 +12,11 @@ on:
         type: string
         description: "HuggingFace repository path (e.g., openai/whisper-base)"
       release_upload_url:
-        required: false
+        required: true
         type: string
         description: "GitHub release upload_url for direct asset upload"
       release_tag:
-        required: false
+        required: true
         type: string
         description: "GitHub release tag for direct asset upload"
 
@@ -131,7 +131,7 @@ jobs:
           fi
 
       - name: Upload model(s) to GitHub Release
-        if: ${{ inputs.release_upload_url != '' && inputs.release_tag != '' }}
+        if: ${{ inputs.release_tag != '' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
