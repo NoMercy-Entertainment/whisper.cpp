@@ -8,35 +8,49 @@ on:
 jobs:
   build-whisper:
     runs-on: ubuntu-latest
+    outputs:
+      versions:
+        description: Whisper GGML Models
+        value: "base small medium large-v3"
 
     steps:
       - name: Checkout whisper.cpp
         uses: actions/checkout@v4
         with:
-          repository: ggerganov/whisper.cpp
+          repository: ggml-org/whisper.cpp
 
       - name: Install dependencies
         run: |
+          git config --global --add safe.directory ${{ github.workspace }}
           sudo apt-get update
           sudo apt-get install -y git wget python3 python3-pip build-essential
           pip3 install numpy tqdm torch --index-url https://download.pytorch.org/whl/cpu
+          mkdir -p ${{ github.workspace }}/models-src
 
       - name: Download HuggingFace models
         run: |
-          mkdir -p models-src
-          for model in base small medium large-v3; do
-            echo "Downloading $model..."
-            mkdir -p models-src/$model
-            git clone --depth 1 https://huggingface.co/openai/whisper-$model models-src/$model
-          done
+          git clone https://huggingface.co/openai/whisper-base ${{ github.workspace }}/models-src/base
+
+      - name: Download HuggingFace models
+        run: |
+          git clone https://huggingface.co/openai/whisper-small ${{ github.workspace }}/models-src/small
+
+      - name: Download HuggingFace models
+        run: |
+          git clone https://huggingface.co/openai/whisper-medium ${{ github.workspace }}/models-src/medium
+
+      - name: Download HuggingFace models
+        run: |
+          git clone https://huggingface.co/openai/whisper-large-v3 ${{ github.workspace }}/models-src/large-v3
 
       - name: Convert models to GGML
         run: |
-          for model in base small medium large-v3; do
+          mkdir -p ${{ github.workspace }}/output/models
+          for model in ${{ steps.build-whisper.outputs.versions }}; do
             echo "Converting $model..."
-            python3 models/convert-pt-to-ggml.py \
-              models-src/$model \
-              --outfile models/ggml-$model.bin
+            python3 ${{ github.workspace }}/models/convert-pt-to-ggml.py \
+              ${{ github.workspace }}/models-src/$model \
+              --outfile ${{ github.workspace }}/output/models/ggml-$model.bin
           done
 
 
@@ -44,4 +58,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: whisper-ggml-models
-          path: models/ggml-*.bin
+          path: output/models/ggml-*.bin
