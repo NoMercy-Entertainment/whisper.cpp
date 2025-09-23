@@ -4,9 +4,9 @@ on:
   push:
     branches:
       - master
-  workflow_dispatch: # handmatig starten
+  workflow_dispatch: # manual trigger from Actions tab
   schedule:
-    - cron: "0 3 * * 0" # wekelijks, elke zondag 03:00 UTC
+    - cron: "0 3 * * 0" # weekly, every sunday 03:00 UTC
 
 jobs:
   build-base:

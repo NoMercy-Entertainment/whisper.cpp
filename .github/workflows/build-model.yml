@@ -33,6 +33,18 @@ jobs:
         with:
           repository: ggml-org/whisper.cpp
           ref: v1.7.6
+          
+      - name: Download mel filters
+        run: |
+          # Ensure the whisper assets directory exists and download mel filters
+          mkdir -p ${{ github.workspace }}/whisper/assets
+          if [ ! -f "${{ github.workspace }}/whisper/assets/mel_filters.npz" ]; then
+            echo "Downloading mel_filters.npz..."
+            wget -O "${{ github.workspace }}/whisper/assets/mel_filters.npz" \
+              "https://raw.githubusercontent.com/openai/whisper/main/whisper/assets/mel_filters.npz" || \
+            curl -L -o "${{ github.workspace }}/whisper/assets/mel_filters.npz" \
+              "https://raw.githubusercontent.com/openai/whisper/main/whisper/assets/mel_filters.npz"
+          fi
 
       - name: Install dependencies
         run: |
