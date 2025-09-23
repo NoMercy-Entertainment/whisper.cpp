@@ -1,0 +1,77 @@
+name: Build Single Whisper GGML Model
+
+on:
+  workflow_call:
+    inputs:
+      model_name:
+        required: true
+        type: string
+        description: "Name of the model (e.g., base, small, medium, large-v3)"
+      model_repo:
+        required: true
+        type: string
+        description: "HuggingFace repository path (e.g., openai/whisper-base)"
+
+jobs:
+  build-model:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
+
+      - name: Checkout whisper.cpp
+        uses: actions/checkout@v4
+        with:
+          repository: ggml-org/whisper.cpp
+          ref: v1.7.6
+
+      - name: Install dependencies
+        run: |
+          git config --global --add safe.directory ${{ github.workspace }}
+          sudo apt-get update && sudo apt-get install -y git-lfs wget python3 python3-pip
+          git lfs install
+          pip3 install numpy tqdm torch --index-url https://download.pytorch.org/whl/cpu
+          mkdir -p ${{ github.workspace }}/models-src ${{ github.workspace }}/output/models
+
+      - name: Download HuggingFace model ${{ inputs.model_name }}
+        run: |
+          echo "Available disk space before download:"
+          df -h
+          for i in {1..3}; do
+            if git clone --depth 1 https://huggingface.co/${{ inputs.model_repo }} ${{ github.workspace }}/models-src/${{ inputs.model_name }}; then
+              echo "Successfully downloaded ${{ inputs.model_name }} model"
+              break
+            else
+              echo "Attempt $i failed, retrying..."
+              rm -rf ${{ github.workspace }}/models-src/${{ inputs.model_name }}
+              sleep $((i * 5))  # Progressive backoff: 5s, 10s, 15s
+            fi
+          done
+
+      - name: Convert model to GGML ${{ inputs.model_name }}
+        run: |
+          echo "Converting ${{ inputs.model_name }}..."
+          echo "Disk space before conversion:"
+          df -h
+          python3 ${{ github.workspace }}/models/convert-pt-to-ggml.py \
+            ${{ github.workspace }}/models-src/${{ inputs.model_name }} \
+            --outfile ${{ github.workspace }}/output/models/ggml-${{ inputs.model_name }}.bin
+          echo "Cleaning up ${{ inputs.model_name }} source files..."
+          rm -rf ${{ github.workspace }}/models-src/${{ inputs.model_name }}
+          echo "Final disk space:"
+          df -h
+
+      - name: Upload GGML model ${{ inputs.model_name }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: whisper-ggml-model-${{ inputs.model_name }}
+          path: output/models/ggml-${{ inputs.model_name }}.bin
