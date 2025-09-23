@@ -66,7 +66,8 @@ jobs:
           # Use the HuggingFace H5 converter for HuggingFace models
           python3 ${{ github.workspace }}/models/convert-h5-to-ggml.py \
             ${{ github.workspace }}/models-src/${{ inputs.model_name }} \
-            ${{ github.workspace }}/output/models/ggml-${{ inputs.model_name }}.bin
+            ${{ github.workspace }} \
+            ${{ github.workspace }}/output/models/
           echo "Cleaning up ${{ inputs.model_name }} source files..."
           rm -rf ${{ github.workspace }}/models-src/${{ inputs.model_name }}
           echo "Final disk space:"
