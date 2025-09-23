@@ -102,6 +102,7 @@ jobs:
       model_name: "base"
       model_repo: "openai/whisper-base"
       release_upload_url: ${{ needs.create-release.outputs.upload_url }}
+      release_tag : ${{ needs.create-release.outputs.tag }}
 
   build-small:
     needs: create-release
@@ -110,6 +111,7 @@ jobs:
       model_name: "small"
       model_repo: "openai/whisper-small"
       release_upload_url: ${{ needs.create-release.outputs.upload_url }}
+      release_tag : ${{ needs.create-release.outputs.tag }}
 
   build-medium:
     needs: create-release
@@ -118,6 +120,7 @@ jobs:
       model_name: "medium"
       model_repo: "openai/whisper-medium"
       release_upload_url: ${{ needs.create-release.outputs.upload_url }}
+      release_tag : ${{ needs.create-release.outputs.tag }}
 
   build-large-v3:
     needs: create-release
@@ -126,6 +129,7 @@ jobs:
       model_name: "large-v3"
       model_repo: "openai/whisper-large-v3"
       release_upload_url: ${{ needs.create-release.outputs.upload_url }}
+      release_tag : ${{ needs.create-release.outputs.tag }}
 
   publish-release:
     needs: [create-release, build-base, build-small, build-medium, build-large-v3]
