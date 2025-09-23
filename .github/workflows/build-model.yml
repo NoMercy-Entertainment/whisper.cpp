@@ -69,9 +69,12 @@ jobs:
             cd "$MODEL_DIR"
             
             if git clone --filter=blob:none --no-checkout https://huggingface.co/${{ inputs.model_repo }} .; then
-              # Configure sparse checkout to only get the files we need
+              # Configure sparse checkout to exclude large unnecessary files
               git sparse-checkout init --cone
-              git sparse-checkout set "*.json" "*.txt" "*.md" "*.safetensors" "pytorch_model.bin"
+              git sparse-checkout set --no-cone
+              echo "/*" > .git/info/sparse-checkout
+              echo "!flax_model.msgpack" >> .git/info/sparse-checkout
+              echo "!tf_model.h5" >> .git/info/sparse-checkout
               
               # Try to checkout
               if git checkout; then
