@@ -11,6 +11,10 @@ on:
         required: true
         type: string
         description: "HuggingFace repository path (e.g., openai/whisper-base)"
+      release_upload_url:
+        required: false
+        type: string
+        description: "GitHub release upload_url for direct asset upload"
 
 jobs:
   build-model:
