@@ -10,16 +10,16 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # - name: Free Disk Space (Ubuntu)
-      #   uses: jlumbroso/free-disk-space@main
-      #   with:
-      #     tool-cache: false
-      #     android: true
-      #     dotnet: true
-      #     haskell: true
-      #     large-packages: true
-      #     docker-images: true
-      #     swap-storage: true
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
 
       - name: Checkout whisper.cpp
         uses: actions/checkout@v4
@@ -31,48 +31,109 @@ jobs:
         run: |
           git config --global --add safe.directory ${{ github.workspace }}
           sudo apt-get update && sudo apt-get install -y git-lfs wget python3 python3-pip build-essential
+          git lfs install
           pip3 install numpy tqdm torch --index-url https://download.pytorch.org/whl/cpu
           mkdir -p ${{ github.workspace }}/models-src ${{ github.workspace }}/output/models
 
       - name: Download HuggingFace model base
-        run: git clone https://huggingface.co/openai/whisper-base ${{ github.workspace }}/models-src/base
+        run: |
+          echo "Available disk space before download:"
+          df -h
+          for i in {1..3}; do
+            if git clone --depth 1 https://huggingface.co/openai/whisper-base ${{ github.workspace }}/models-src/base; then
+              break
+            else
+              echo "Attempt $i failed, retrying..."
+              rm -rf ${{ github.workspace }}/models-src/base
+              sleep 5
+            fi
+          done
 
       - name: Download HuggingFace model small
-        run: git clone https://huggingface.co/openai/whisper-small ${{ github.workspace }}/models-src/small
+        run: |
+          echo "Available disk space before download:"
+          df -h
+          for i in {1..3}; do
+            if git clone --depth 1 https://huggingface.co/openai/whisper-small ${{ github.workspace }}/models-src/small; then
+              break
+            else
+              echo "Attempt $i failed, retrying..."
+              rm -rf ${{ github.workspace }}/models-src/small
+              sleep 5
+            fi
+          done
 
       - name: Download HuggingFace model medium
-        run: git clone https://huggingface.co/openai/whisper-medium ${{ github.workspace }}/models-src/medium
+        run: |
+          echo "Available disk space before download:"
+          df -h
+          for i in {1..3}; do
+            if git clone --depth 1 https://huggingface.co/openai/whisper-medium ${{ github.workspace }}/models-src/medium; then
+              break
+            else
+              echo "Attempt $i failed, retrying..."
+              rm -rf ${{ github.workspace }}/models-src/medium
+              sleep 10
+            fi
+          done
 
       - name: Download HuggingFace model large-v3
-        run: git clone https://huggingface.co/openai/whisper-large-v3 ${{ github.workspace }}/models-src/large-v3
+        run: |
+          echo "Available disk space before download:"
+          df -h
+          for i in {1..3}; do
+            if git clone --depth 1 https://huggingface.co/openai/whisper-large-v3 ${{ github.workspace }}/models-src/large-v3; then
+              break
+            else
+              echo "Attempt $i failed, retrying..."
+              rm -rf ${{ github.workspace }}/models-src/large-v3
+              sleep 10
+            fi
+          done
 
       - name: Convert models to GGML base
         run: |
             echo "Converting base..."
+            echo "Disk space before conversion:"
+            df -h
             python3 ${{ github.workspace }}/models/convert-pt-to-ggml.py \
               ${{ github.workspace }}/models-src/base \
               --outfile ${{ github.workspace }}/output/models/ggml-base.bin
+            echo "Cleaning up base source files..."
+            rm -rf ${{ github.workspace }}/models-src/base
 
       - name: Convert models to GGML small
         run: |
             echo "Converting small..."
+            echo "Disk space before conversion:"
+            df -h
             python3 ${{ github.workspace }}/models/convert-pt-to-ggml.py \
               ${{ github.workspace }}/models-src/small \
               --outfile ${{ github.workspace }}/output/models/ggml-small.bin
+            echo "Cleaning up small source files..."
+            rm -rf ${{ github.workspace }}/models-src/small
 
       - name: Convert models to GGML medium
         run: |
             echo "Converting medium..."
+            echo "Disk space before conversion:"
+            df -h
             python3 ${{ github.workspace }}/models/convert-pt-to-ggml.py \
               ${{ github.workspace }}/models-src/medium \
               --outfile ${{ github.workspace }}/output/models/ggml-medium.bin
+            echo "Cleaning up medium source files..."
+            rm -rf ${{ github.workspace }}/models-src/medium
 
       - name: Convert models to GGML large-v3
         run: |
             echo "Converting large-v3..."
+            echo "Disk space before conversion:"
+            df -h
             python3 ${{ github.workspace }}/models/convert-pt-to-ggml.py \
               ${{ github.workspace }}/models-src/large-v3 \
               --outfile ${{ github.workspace }}/output/models/ggml-large-v3.bin
+            echo "Cleaning up large-v3 source files..."
+            rm -rf ${{ github.workspace }}/models-src/large-v3
 
       - name: Upload GGML models
         uses: actions/upload-artifact@v4
