@@ -59,17 +59,43 @@ jobs:
         run: |
           echo "Available disk space before download:"
           df -h
+          
+          # For large models, use sparse checkout to avoid downloading unnecessary files
+          MODEL_DIR="${{ github.workspace }}/models-src/${{ inputs.model_name }}"
+          
           for i in {1..3}; do
-            if git clone --depth 1 https://huggingface.co/${{ inputs.model_repo }} ${{ github.workspace }}/models-src/${{ inputs.model_name }}; then
-              echo "Successfully downloaded ${{ inputs.model_name }} model"
-              echo "Files in model directory:"
-              ls -la ${{ github.workspace }}/models-src/${{ inputs.model_name }}/
-              break
-            else
-              echo "Attempt $i failed, retrying..."
-              rm -rf ${{ github.workspace }}/models-src/${{ inputs.model_name }}
-              sleep $((i * 5))  # Progressive backoff: 5s, 10s, 15s
+            rm -rf "$MODEL_DIR"
+            mkdir -p "$MODEL_DIR"
+            cd "$MODEL_DIR"
+            
+            if git clone --filter=blob:none --no-checkout https://huggingface.co/${{ inputs.model_repo }} .; then
+              # Configure sparse checkout to only get the files we need
+              git sparse-checkout init --cone
+              git sparse-checkout set "*.json" "*.txt" "*.md" "*.safetensors" "pytorch_model.bin"
+              
+              # Try to checkout
+              if git checkout; then
+                echo "Successfully downloaded ${{ inputs.model_name }} model with sparse checkout"
+                echo "Files in model directory:"
+                ls -la "$MODEL_DIR"
+                break
+              else
+                echo "Checkout failed, trying full clone for attempt $i..."
+                cd ${{ github.workspace }}
+                rm -rf "$MODEL_DIR"
+                if git clone --depth 1 https://huggingface.co/${{ inputs.model_repo }} "$MODEL_DIR"; then
+                  echo "Successfully downloaded ${{ inputs.model_name }} model with full clone"
+                  echo "Files in model directory:"
+                  ls -la "$MODEL_DIR"
+                  break
+                fi
+              fi
             fi
+            
+            echo "Attempt $i failed, retrying..."
+            cd ${{ github.workspace }}
+            rm -rf "$MODEL_DIR"
+            sleep $((i * 5))  # Progressive backoff: 5s, 10s, 15s
           done
 
       - name: Convert model to GGML ${{ inputs.model_name }}
