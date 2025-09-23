@@ -1,9 +1,6 @@
 name: Build Single Whisper GGML Model
 
 on:
-  push:
-    branches:
-      - master
   workflow_call:
     inputs:
       model_name:

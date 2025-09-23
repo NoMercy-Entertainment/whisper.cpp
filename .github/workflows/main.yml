@@ -1,6 +1,9 @@
 name: Build Whisper GGML Models
 
 on:
+  push:
+    branches:
+      - master
   workflow_dispatch: # handmatig starten
   schedule:
     - cron: "0 3 * * 0" # wekelijks, elke zondag 03:00 UTC
