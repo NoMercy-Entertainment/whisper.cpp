@@ -39,7 +39,7 @@ jobs:
           git config --global --add safe.directory ${{ github.workspace }}
           sudo apt-get update && sudo apt-get install -y git-lfs wget python3 python3-pip
           git lfs install
-          pip3 install numpy tqdm torch --index-url https://download.pytorch.org/whl/cpu
+          pip3 install numpy tqdm torch transformers --index-url https://download.pytorch.org/whl/cpu
           mkdir -p ${{ github.workspace }}/models-src ${{ github.workspace }}/output/models
 
       - name: Download HuggingFace model ${{ inputs.model_name }}
@@ -62,9 +62,10 @@ jobs:
           echo "Converting ${{ inputs.model_name }}..."
           echo "Disk space before conversion:"
           df -h
-          python3 ${{ github.workspace }}/models/convert-pt-to-ggml.py \
+          # Use the HuggingFace H5 converter for HuggingFace models
+          python3 ${{ github.workspace }}/models/convert-h5-to-ggml.py \
             ${{ github.workspace }}/models-src/${{ inputs.model_name }} \
-            --outfile ${{ github.workspace }}/output/models/ggml-${{ inputs.model_name }}.bin
+            ${{ github.workspace }}/output/models/ggml-${{ inputs.model_name }}.bin
           echo "Cleaning up ${{ inputs.model_name }} source files..."
           rm -rf ${{ github.workspace }}/models-src/${{ inputs.model_name }}
           echo "Final disk space:"
