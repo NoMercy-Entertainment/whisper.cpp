@@ -15,6 +15,10 @@ on:
         required: false
         type: string
         description: "GitHub release upload_url for direct asset upload"
+      release_tag:
+        required: false
+        type: string
+        description: "GitHub release tag for direct asset upload"
 
 jobs:
   build-model:
@@ -127,12 +131,12 @@ jobs:
           fi
 
       - name: Upload model(s) to GitHub Release
-        if: ${{ inputs.release_upload_url != '' }}
+        if: ${{ inputs.release_upload_url != '' && inputs.release_tag != '' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "Uploading ${{ steps.set-upload-pattern.outputs.pattern }} to release"
-          gh release upload "${{ github.event.inputs.tag || github.ref_name }}" ${{ steps.set-upload-pattern.outputs.pattern }} --repo "${{ github.repository }}" --clobber
+          gh release upload "${{ inputs.release_tag }}" ${{ steps.set-upload-pattern.outputs.pattern }} --repo "${{ github.repository }}" --clobber
         shell: bash
 
       # Optionally, still upload as workflow artifact for redundancy
