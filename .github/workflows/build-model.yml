@@ -80,6 +80,11 @@ jobs:
             ${{ github.workspace }}/models-src/${{ inputs.model_name }} \
             ${{ github.workspace }} \
             ${{ github.workspace }}/output/models/
+          # Rename the output file to match expected naming convention
+          if [ -f "${{ github.workspace }}/output/models/ggml-model.bin" ]; then
+            mv "${{ github.workspace }}/output/models/ggml-model.bin" \
+               "${{ github.workspace }}/output/models/ggml-${{ inputs.model_name }}.bin"
+          fi
           echo "Cleaning up ${{ inputs.model_name }} source files..."
           rm -rf ${{ github.workspace }}/models-src/${{ inputs.model_name }}
           echo "Final disk space:"
