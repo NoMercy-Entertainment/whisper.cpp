@@ -8,10 +8,6 @@ on:
 jobs:
   build-whisper:
     runs-on: ubuntu-latest
-    outputs:
-      versions:
-        description: Whisper GGML Models
-        value: "base small medium large-v3"
 
     steps:
       - name: Checkout whisper.cpp
@@ -37,19 +33,36 @@ jobs:
       - name: Download HuggingFace model medium
         run: git clone https://huggingface.co/openai/whisper-medium ${{ github.workspace }}/models-src/medium
 
-      - name: Download HuggingFace model large
+      - name: Download HuggingFace model large-v3
         run: git clone https://huggingface.co/openai/whisper-large-v3 ${{ github.workspace }}/models-src/large-v3
 
-      - name: Convert models to GGML
+      - name: Convert models to GGML base
         run: |
-          mkdir -p ${{ github.workspace }}/output/models
-          for model in ${{ steps.build-whisper.outputs.versions }}; do
-            echo "Converting $model..."
+            echo "Converting base..."
             python3 ${{ github.workspace }}/models/convert-pt-to-ggml.py \
-              ${{ github.workspace }}/models-src/$model \
-              --outfile ${{ github.workspace }}/output/models/ggml-$model.bin
-          done
+              ${{ github.workspace }}/models-src/base \
+              --outfile ${{ github.workspace }}/output/models/ggml-base.bin
 
+      - name: Convert models to GGML small
+        run: |
+            echo "Converting small..."
+            python3 ${{ github.workspace }}/models/convert-pt-to-ggml.py \
+              ${{ github.workspace }}/models-src/small \
+              --outfile ${{ github.workspace }}/output/models/ggml-small.bin
+
+      - name: Convert models to GGML medium
+        run: |
+            echo "Converting medium..."
+            python3 ${{ github.workspace }}/models/convert-pt-to-ggml.py \
+              ${{ github.workspace }}/models-src/medium \
+              --outfile ${{ github.workspace }}/output/models/ggml-medium.bin
+
+      - name: Convert models to GGML large-v3
+        run: |
+            echo "Converting large-v3..."
+            python3 ${{ github.workspace }}/models/convert-pt-to-ggml.py \
+              ${{ github.workspace }}/models-src/large-v3 \
+              --outfile ${{ github.workspace }}/output/models/ggml-large-v3.bin
 
       - name: Upload GGML models
         uses: actions/upload-artifact@v4
