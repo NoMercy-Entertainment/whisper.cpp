@@ -27,19 +27,19 @@ jobs:
           pip3 install numpy tqdm torch --index-url https://download.pytorch.org/whl/cpu
           mkdir -p ${{ github.workspace }}/models-src
 
-      - name: Download HuggingFace models
+      - name: Download HuggingFace model base
         run: |
           git clone https://huggingface.co/openai/whisper-base ${{ github.workspace }}/models-src/base
 
-      - name: Download HuggingFace models
+      - name: Download HuggingFace model small
         run: |
           git clone https://huggingface.co/openai/whisper-small ${{ github.workspace }}/models-src/small
 
-      - name: Download HuggingFace models
+      - name: Download HuggingFace model medium
         run: |
           git clone https://huggingface.co/openai/whisper-medium ${{ github.workspace }}/models-src/medium
 
-      - name: Download HuggingFace models
+      - name: Download HuggingFace model large
         run: |
           git clone https://huggingface.co/openai/whisper-large-v3 ${{ github.workspace }}/models-src/large-v3
 
