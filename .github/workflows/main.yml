@@ -36,6 +36,9 @@ jobs:
   combine-artifacts:
     needs: [build-base, build-small, build-medium, build-large-v3]
     runs-on: ubuntu-latest
+    outputs:
+      release-tag: ${{ steps.create-tag.outputs.tag }}
+      whispercpp-version: ${{ steps.get-whispercpp-version.outputs.version }}
     steps:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
@@ -44,8 +47,88 @@ jobs:
           merge-multiple: true
           path: combined-models/
 
+      - name: Extract whisper.cpp version
+        id: get-whispercpp-version
+        run: |
+          # Try to extract version from a VERSION file or git tag in the whisper.cpp directory
+          # Adjust the path below if whisper.cpp is in a different location or needs to be cloned
+          if [ -f "combined-models/whisper.cpp/VERSION" ]; then
+            VERSION=$(cat combined-models/whisper.cpp/VERSION)
+          elif [ -d "combined-models/whisper.cpp/.git" ]; then
+            VERSION=$(git -C combined-models/whisper.cpp describe --tags --abbrev=0)
+          else
+            VERSION="unknown"
+          fi
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "Detected whisper.cpp version: $VERSION"
+
+      - name: Create version tag
+        id: create-tag
+        run: |
+          # Create date-based version (YYYY.MM.DD format)
+          VERSION=$(date +'%Y.%m.%d')
+          
+          # If multiple builds happen on the same day, add a build number
+          BUILD_NUMBER=1
+          ORIGINAL_VERSION=$VERSION
+          
+          # Check if we need to add build number (this is a simple approach)
+          # In a real scenario, you might want to check existing releases via API
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            # For manual builds, add timestamp to make it unique
+            VERSION="${VERSION}.$(date +'%H%M')"
+          fi
+          
+          echo "tag=v${VERSION}" >> $GITHUB_OUTPUT
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "Generated version: v${VERSION}"
+
       - name: Upload combined artifacts
         uses: actions/upload-artifact@v4
         with:
           name: whisper-ggml-models
           path: combined-models/
+
+  create-release:
+    needs: combine-artifacts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download combined artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: whisper-ggml-models
+          path: release-assets/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ needs.combine-artifacts.outputs.release-tag }}
+          name: "Whisper GGML Models ${{ needs.combine-artifacts.outputs.release-tag }}"
+          body: |
+            # Whisper GGML Models Release ${{ needs.combine-artifacts.outputs.release-tag }}
+            
+            This release contains GGML-converted Whisper models for use with whisper.cpp and compatible applications.
+            
+            ## Models Included
+            - **ggml-base.bin** - Base model (~150MB)
+            - **ggml-small.bin** - Small model (~500MB) 
+            - **ggml-medium.bin** - Medium model (~1.5GB)
+            - **ggml-large-v3.bin** - Large v3 model (~3GB)
+            
+            ## Usage
+            These models can be used directly with:
+            - [whisper.cpp](https://github.com/ggml-org/whisper.cpp)
+            - [whisper-desktop](https://github.com/Const-me/Whisper)
+            - Any application supporting GGML Whisper models
+            
+            ## Build Information
+            - Built from: whisper.cpp ${{ needs.combine-artifacts.outputs.whispercpp-version }}
+            - Source models: OpenAI Whisper (HuggingFace)
+            - Build date: ${{ needs.combine-artifacts.outputs.release-tag }}
+            
+            Generated automatically by GitHub Actions.
+          files: release-assets/*
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
