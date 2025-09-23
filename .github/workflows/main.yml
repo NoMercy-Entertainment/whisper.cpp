@@ -35,6 +35,9 @@ jobs:
           pip3 install numpy tqdm torch --index-url https://download.pytorch.org/whl/cpu
           mkdir -p ${{ github.workspace }}/models-src ${{ github.workspace }}/output/models
 
+  build-base-model:
+    needs: build-whisper
+    steps:
       - name: Download HuggingFace model base
         run: |
           echo "Available disk space before download:"
@@ -49,6 +52,20 @@ jobs:
             fi
           done
 
+      - name: Convert models to GGML base
+        run: |
+            echo "Converting base..."
+            echo "Disk space before conversion:"
+            df -h
+            python3 ${{ github.workspace }}/models/convert-pt-to-ggml.py \
+              ${{ github.workspace }}/models-src/base \
+              --outfile ${{ github.workspace }}/output/models/ggml-base.bin
+            echo "Cleaning up base source files..."
+            rm -rf ${{ github.workspace }}/models-src/base
+
+  build-small-model:
+    needs: build-whisper
+    steps:
       - name: Download HuggingFace model small
         run: |
           echo "Available disk space before download:"
@@ -63,6 +80,20 @@ jobs:
             fi
           done
 
+      - name: Convert models to GGML small
+        run: |
+            echo "Converting small..."
+            echo "Disk space before conversion:"
+            df -h
+            python3 ${{ github.workspace }}/models/convert-pt-to-ggml.py \
+              ${{ github.workspace }}/models-src/small \
+              --outfile ${{ github.workspace }}/output/models/ggml-small.bin
+            echo "Cleaning up small source files..."
+            rm -rf ${{ github.workspace }}/models-src/small
+
+  build-medium-large-model:
+    needs: build-whisper
+    steps:
       - name: Download HuggingFace model medium
         run: |
           echo "Available disk space before download:"
@@ -77,6 +108,20 @@ jobs:
             fi
           done
 
+      - name: Convert models to GGML medium
+        run: |
+            echo "Converting medium..."
+            echo "Disk space before conversion:"
+            df -h
+            python3 ${{ github.workspace }}/models/convert-pt-to-ggml.py \
+              ${{ github.workspace }}/models-src/medium \
+              --outfile ${{ github.workspace }}/output/models/ggml-medium.bin
+            echo "Cleaning up medium source files..."
+            rm -rf ${{ github.workspace }}/models-src/medium
+
+  build-large-model:
+    needs: build-whisper
+    steps:
       - name: Download HuggingFace model large-v3
         run: |
           echo "Available disk space before download:"
@@ -91,39 +136,6 @@ jobs:
             fi
           done
 
-      - name: Convert models to GGML base
-        run: |
-            echo "Converting base..."
-            echo "Disk space before conversion:"
-            df -h
-            python3 ${{ github.workspace }}/models/convert-pt-to-ggml.py \
-              ${{ github.workspace }}/models-src/base \
-              --outfile ${{ github.workspace }}/output/models/ggml-base.bin
-            echo "Cleaning up base source files..."
-            rm -rf ${{ github.workspace }}/models-src/base
-
-      - name: Convert models to GGML small
-        run: |
-            echo "Converting small..."
-            echo "Disk space before conversion:"
-            df -h
-            python3 ${{ github.workspace }}/models/convert-pt-to-ggml.py \
-              ${{ github.workspace }}/models-src/small \
-              --outfile ${{ github.workspace }}/output/models/ggml-small.bin
-            echo "Cleaning up small source files..."
-            rm -rf ${{ github.workspace }}/models-src/small
-
-      - name: Convert models to GGML medium
-        run: |
-            echo "Converting medium..."
-            echo "Disk space before conversion:"
-            df -h
-            python3 ${{ github.workspace }}/models/convert-pt-to-ggml.py \
-              ${{ github.workspace }}/models-src/medium \
-              --outfile ${{ github.workspace }}/output/models/ggml-medium.bin
-            echo "Cleaning up medium source files..."
-            rm -rf ${{ github.workspace }}/models-src/medium
-
       - name: Convert models to GGML large-v3
         run: |
             echo "Converting large-v3..."
@@ -135,6 +147,9 @@ jobs:
             echo "Cleaning up large-v3 source files..."
             rm -rf ${{ github.workspace }}/models-src/large-v3
 
+  upload-models:
+    needs: [build-base-model, build-small-model, build-medium-large-model, build-large-model]
+    steps:
       - name: Upload GGML models
         uses: actions/upload-artifact@v4
         with:
